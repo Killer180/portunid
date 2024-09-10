@@ -33,7 +33,9 @@ def load_vocabulary_from_csv(file_path):
 def ask_test_count():
     global test_quantity
     test_quantity = simpledialog.askinteger("单词测试", "请选择您想要测试的单词数量:", minvalue=1, maxvalue=len(vocabulary))
-    if test_quantity is not None and 1 <= test_quantity <= len(vocabulary):
+    if test_quantity is None: # 如果检测到取消操作，直接关闭对话框
+        pass
+    elif 1 <= test_quantity <= len(vocabulary):
         test_words = random.sample(list(vocabulary.keys()), test_quantity)
         test_index = 0
         show_next_word(test_words, test_index)
