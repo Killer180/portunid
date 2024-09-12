@@ -1,52 +1,86 @@
-import tkinter as tk
-from datetime import datetime
-from operator import index
-from tkinter import simpledialog, messagebox, filedialog, font
-from tkinter.font import Font
 import csv
-import random
+import sqlite3
+from datetime import datetime
+
+# this "learned_words" is for test only.
+learned_words = ['abandon', 'ability', 'able', 'abnormal']
+
+def import_new_words (filename):
+    conn = sqlite3.connect('vocabulary_hs.db')
+    cursor = conn.cursor()
+
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS vocabulary_hs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        english TEXT NOT NULL,
+        chinese TEXT,
+        practice_times INTEGER,
+        last_practice_date TEXT
+        )
+    ''')
+
+    with open(filename, 'r', newline='') as csvfile:
+        csv_reader = csv.DictReader(csvfile)
+
+        to_db = [(row['english'], row['chinese'], row['practice_times'], row['last_practice_date']) for row in csv_reader]
+
+    cursor.executemany("INSERT INTO vocabulary_hs (english, chinese, practice_times, last_practice_date) VALUES (?, ?, ?, ?);", to_db)
+
+    conn.commit()
+
+# verify the database
+    cursor.execute("SELECT * FROM vocabulary_hs")
+    print(cursor.fetchall())
+    print('the data is growing up!')
+
+    conn.close()
 
 
+def update_practice_data ():
+    conn = sqlite3.connect('vocabulary_hs.db')
+    cursor = conn.cursor()
 
-# 初始空的词汇库
-vocabulary = {}
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-# 记录用户选择“不认识”的单词以及学过的单词
-unknown_words = []
-learned_words = []
-
-# 用户选择的测试数量
-test_quantity = 0
-
-current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-# 函数：从CSV文件加载词汇库
-def load_vocabulary_from_csv(file_path):
-    try:
-        with open(file_path, mode='r', encoding='utf-8', errors='ignore') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                vocabulary[row['english']] = {
-                    'chinese' : row['chinese'],
-                    'practice_times' : row['practice_times'],
-                    'last_time' : row['last_time']
-                }
-    except FileNotFoundError:
-        messagebox.showerror("错误", "找不到文件，请检查文件路径。")
-    except Exception as e:
-        messagebox.showerror("错误", f"读取文件时发生错误：{e}")
-
-# 函数：更新词汇池中本次测试过的单词的信息- practice_time +1, 更新该次测试时间在last_time列
-def update_vocabulary_to_csv(file_path):
-    update_filename = 'learning.csv'
     for word in learned_words:
-        if word in vocabulary:
-            vocabulary[word]['practice_times'] += 1
-            vocabulary[word]['last_time'] = current_time
+        cursor.execute('''
+        UPDATE vocabulary_hs
+        SET practice_times = practice_times + 1,
+            last_practice_date = ?
+        WHERE english = ?
+        ''', (current_time,word))
 
-    with open(update_filename, mode='w', newline='', encoding='utf-8') as outfile:
-        writer = csv.writer(outfile)
-        writer.writerows(words)
+    conn.commit()
+    print(current_time)
 
-print(vocabulary)
-print(current_time)
+    # verify the database
+    cursor.execute("SELECT * FROM vocabulary_hs")
+    print(cursor.fetchall())
+    print('we updated the data!')
+
+    conn.close()
+
+# clear up the current database in need.
+def clear_up_db ():
+    conn = sqlite3.connect('vocabulary_hs.db')
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM vocabulary_hs")
+
+    #Reset the AUTOINCREMENT counter - id will restart from 1"
+    cursor.execute("DELETE FROM sqlite_sequence WHERE name='vocabulary_hs'")
+
+    conn.commit()
+
+    # verify the database
+    cursor.execute("SELECT * FROM vocabulary_hs")
+    print(cursor.fetchall())
+    print('the database is clean now!')
+    cursor.close()
+    conn.close()
+
+
+
+print(learned_words)
+
+update_practice_data()
