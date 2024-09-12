@@ -84,3 +84,4 @@ def clear_up_db ():
 print(learned_words)
 
 update_practice_data()
+ 
