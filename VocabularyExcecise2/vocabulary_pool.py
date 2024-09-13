@@ -12,9 +12,9 @@ def import_new_words (filename):
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS vocabulary_hs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        english TEXT NOT NULL,
+        english TEXT NOT NULL UNIQUE,
         chinese TEXT,
-        practice_times INTEGER,
+        practice_times INTEGER NOT NULL DEFAULT 0,
         last_practice_date TEXT
         )
     ''')
@@ -24,7 +24,7 @@ def import_new_words (filename):
 
         to_db = [(row['english'], row['chinese'], row['practice_times'], row['last_practice_date']) for row in csv_reader]
 
-    cursor.executemany("INSERT INTO vocabulary_hs (english, chinese, practice_times, last_practice_date) VALUES (?, ?, ?, ?);", to_db)
+    cursor.executemany("INSERT OR IGNORE INTO vocabulary_hs (english, chinese, practice_times, last_practice_date) VALUES (?, ?, ?, ?);", to_db)
 
     conn.commit()
 
