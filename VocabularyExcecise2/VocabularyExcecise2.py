@@ -4,7 +4,7 @@ from tkinter import simpledialog, messagebox, filedialog, font
 from tkinter.font import Font
 import csv
 import random
-
+from vocabulary_pool import *
 
 # 初始空的词汇库
 vocabulary = {}
@@ -16,6 +16,31 @@ learned_words = []
 # 用户选择的测试数量
 test_quantity = 0
 
+filename = 'C:\\learning\\learning.csv'
+table_name = 'vocabulary_hs'
+
+vocabulary_all = {}
+
+def load_vocabulary_from_db (table_name, test_quantity):
+    conn = sqlite3.connect('vocabulary_hs.db')
+    cursor = conn.cursor()
+
+    cursor.execute ("SELECT * FROM {} ORDER BY RANDOM() LIMIT ?".format(table_name),(test_quantity,))
+
+    vocabulary = cursor.fetchall()
+
+
+    # verify the vocabulary{}
+    for word in vocabulary:
+        print(word)
+
+
+    cursor.close()
+    conn.close()
+
+    return vocabulary
+
+"""
 # 函数：从CSV文件加载词汇库
 def load_vocabulary_from_csv(file_path):
     try:
@@ -27,21 +52,48 @@ def load_vocabulary_from_csv(file_path):
         messagebox.showerror("错误", "找不到文件，请检查文件路径。")
     except Exception as e:
         messagebox.showerror("错误", f"读取文件时发生错误：{e}")
-
+"""
 
 # 函数：询问用户测试数量并开始测试
 def ask_test_count():
     global test_quantity
-    test_quantity = simpledialog.askinteger("单词测试", "请选择您想要测试的单词数量:", minvalue=1, maxvalue=len(vocabulary))
-    if test_quantity is None: # 如果检测到取消操作，直接关闭对话框
+
+    conn = sqlite3.connect('vocabulary_hs.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM vocabulary_hs")
+    vocabulary_count = cursor.fetchone()[0]
+
+    test_quantity_max = vocabulary_count
+
+    test_quantity = simpledialog.askinteger("单词测试", "请选择您想要测试的单词数量:", minvalue=1,
+                                            maxvalue=test_quantity_max)
+    if test_quantity is None:  # 如果检测到取消操作，直接关闭对话框
         pass
-    elif 1 <= test_quantity <= len(vocabulary):
+    elif 1 <= test_quantity <= test_quantity_max:
+
+        cursor.execute("SELECT * FROM {} ORDER BY RANDOM() LIMIT ?".format(table_name), (test_quantity,))
+
+        vocabulary_list = cursor.fetchall()
+        vocabulary = {
+            english: {'chinese': chinese, 'practice_times': practice_times, 'last_practice_date': last_practice_date}
+            for id, english, chinese, practice_times, last_practice_date in vocabulary_list}
+        try:
+            print(test_quantity)
+            print(vocabulary_list)
+            print(list(vocabulary.keys()))
+        except IndexError:
+            print("error is here")
         test_words = random.sample(list(vocabulary.keys()), test_quantity)
+
         test_index = 0
+
         show_next_word(test_words, test_index)
     else:
-        messagebox.showerror("错误", "请输入一个有效的数量（1 到 {} 之间）！".format(len(vocabulary)))
+        messagebox.showerror("错误", "请输入一个有效的数量（1 到 {} 之间）！".format(test_quantity_max))
         ask_test_count()  # 如果输入无效，重新询问
+
+    cursor.close()
+    conn.close()
 
 # 函数：显示下一个单词并询问用户是否认识
 def show_next_word(test_words, index):
@@ -50,6 +102,7 @@ def show_next_word(test_words, index):
         show_word_label.config(text=test_words[index])
         known_button.config(command=lambda: button_response(test_words, index,True))
         unknown_button.config(command=lambda: button_response(test_words, index,False))
+        update_practice_data(learned_words)
     else:
         end_test()  # 测试结束
 
@@ -134,12 +187,26 @@ root.title("词汇学习器")
 # 设置字体
 button_font = font.Font(family="Arial", size=20, weight="bold")
 
+# 创建词汇库管理菜单
+vocabulary_management_bar = tk.Menu(root)
+root.config(menu=vocabulary_management_bar)
+
+file_menu = tk.Menu(vocabulary_management_bar, tearoff=False)
+vocabulary_management_bar.add_cascade(label="词汇库管理", menu=file_menu)
+
+file_menu.add_command(label="增加新词汇", command=lambda: import_new_words (filename) )
+file_menu.add_command(label="导出词汇库", command=lambda: export_vocabulary_db () )
+file_menu.add_command(label="清除库中所有词汇", command=lambda: clear_up_db () )
+file_menu.add_command(label="创建新词汇库", command=lambda: import_new_words (filename) )
+
+"""
 # 创建按钮加载词汇库
 load_vocabulary_button = tk.Button(root, text="加载词汇库", command=lambda: load_vocabulary_from_csv('C:\\learning\\learning.csv'),
                    width=20,  # 设置按钮宽度为20个字符宽
                    height=2,  # 设置按钮高度为2行高
                    font=button_font)  # 设置按钮上文字的字体
 load_vocabulary_button.pack(pady=10)
+"""
 
 # 创建按钮询问测试数量
 start_button = tk.Button(root, text="开始测试", command=ask_test_count,
